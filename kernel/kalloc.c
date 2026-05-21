@@ -8,6 +8,7 @@
 #include "spinlock.h"
 #include "riscv.h"
 #include "defs.h"
+#include "proc.h"
 
 void freerange(void *pa_start, void *pa_end);
 
@@ -259,10 +260,8 @@ swap_out(void)
     return 0;
 
   int blkno = swap_alloc();
-  if(blkno < 0){
-    // swap space도 꽉 참 — 진짜 OOM
+  if(blkno < 0)
     return 0;
-  }
 
   uint64 pa = PAGE2PA(victim);
   pte_t *pte = walk(victim->pagetable, (uint64)victim->vaddr, 0);
@@ -271,14 +270,18 @@ swap_out(void)
     return 0;
   }
 
-  // 디스크에 쓰기
-  swapwrite(pa, blkno);
+  // swapwrite는 myproc()->pagetable로 user va를 해석하므로
+  // victim의 pagetable로 잠깐 바꿔치기
+  struct proc *p = myproc();
+  pagetable_t saved = p->pagetable;
+  p->pagetable = victim->pagetable;
 
-  // PTE를 swap 형태로: blkno를 PPN 자리에, V/A 끄고 나머지 flags 유지
+  swapwrite((uint64)victim->vaddr, blkno);
+
+  p->pagetable = saved;
+
   uint64 flags = PTE_FLAGS(*pte);
   *pte = ((uint64)blkno << 10) | (flags & ~(PTE_V | PTE_A));
-
-  // TLB 무효화
   sfence_vma();
 
   return (char*)pa;
@@ -292,24 +295,25 @@ swap_in(pagetable_t pagetable, uint64 va)
   va = PGROUNDDOWN(va);
   pte_t *pte = walk(pagetable, va, 0);
   if(pte == 0 || *pte == 0)
-    return -1;             // 진짜 unmapped
+    return -1;
   if(*pte & PTE_V)
-    return -1;             // 이미 valid한데 fault? 이상함
+    return -1;
 
   int blkno = (*pte) >> 10;
 
   char *new_pa = kalloc();
   if(new_pa == 0)
-    return -1;             // OOM
+    return -1;
 
-  swapread((uint64)new_pa, blkno);
-  swap_free(blkno);
-
+  // PTE를 먼저 새 물리 페이지로 매핑 (swapread가 va 통해 쓰기 위함)
   uint64 flags = PTE_FLAGS(*pte);
   *pte = PA2PTE(new_pa) | flags | PTE_V;
   sfence_vma();
 
-  // 다시 user 페이지로 LRU에 등록
+  // 이제 va가 새 페이지에 매핑됐으니 swapread가 동작 가능
+  swapread(va, blkno);
+  swap_free(blkno);
+
   if(flags & PTE_U)
     lru_add(new_pa, pagetable, va);
 
