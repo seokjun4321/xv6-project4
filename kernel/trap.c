@@ -67,7 +67,7 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
-  } else if(r_scause() == 13 || r_scause() == 15){
+  } else if(r_scause() == 12 || r_scause() == 13 || r_scause() == 15){
     // pa4: swap-in 시도
     uint64 fault_va = r_stval();
     if(swap_in(p->pagetable, fault_va) < 0){
