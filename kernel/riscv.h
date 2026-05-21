@@ -359,6 +359,7 @@ struct page{
 
 extern struct page pages[];
 #define PA2PAGE(pa) (&pages[(uint64)(pa) / PGSIZE])
+#define PAGE2PA(p)  ((uint64)((p) - pages) * PGSIZE)
 
 
 

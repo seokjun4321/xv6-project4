@@ -72,6 +72,8 @@ void            lru_remove(char *pa);
 // pa4: swap slot 관리
 int             swap_alloc(void);
 void            swap_free(int blkno);
+// pa4: page reclamation
+char *          swap_out(void);
 
 // log.c
 void            initlog(int, struct superblock*);

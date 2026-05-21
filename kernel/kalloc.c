@@ -184,3 +184,92 @@ swap_free(int blkno)
   swap_bitmap[byte] &= ~(1 << bit);
   release(&swap_bitmap_lock);
 }
+
+// pa4: clock 알고리즘으로 victim 페이지를 LRU에서 골라 반환.
+// LRU가 비어있으면 0.
+static struct page *
+reclaim(void)
+{
+  acquire(&lru_lock);
+  if(page_lru_head == 0){
+    release(&lru_lock);
+    return 0;
+  }
+
+  for(;;){
+    struct page *victim = page_lru_head;
+    pte_t *pte = walk(victim->pagetable, (uint64)victim->vaddr, 0);
+
+    if(pte == 0){
+      // 비정상 — 그냥 리스트에서 떼고 다음 후보로 (방어용)
+      if(victim->next == victim){
+        page_lru_head = 0;
+        release(&lru_lock);
+        return 0;
+      }
+      victim->prev->next = victim->next;
+      victim->next->prev = victim->prev;
+      page_lru_head = victim->next;
+      victim->next = 0;
+      victim->prev = 0;
+      num_lru_pages--;
+      continue;
+    }
+
+    if(*pte & PTE_A){
+      // 최근에 접근됨 → 한 번 봐주고 head를 다음으로
+      *pte &= ~PTE_A;
+      page_lru_head = page_lru_head->next;
+      continue;
+    }
+
+    // PTE_A == 0 → victim 확정. LRU에서 제거.
+    if(victim->next == victim){
+      page_lru_head = 0;
+    } else {
+      victim->prev->next = victim->next;
+      victim->next->prev = victim->prev;
+      page_lru_head = victim->next;
+    }
+    victim->next = 0;
+    victim->prev = 0;
+    num_lru_pages--;
+    release(&lru_lock);
+    return victim;
+  }
+}
+
+// pa4: victim 페이지를 swap에 쓰고 PTE를 swap 형태로 바꾼 뒤,
+// 빈 물리 페이지의 시작 주소를 반환. 실패 시 0.
+char *
+swap_out(void)
+{
+  struct page *victim = reclaim();
+  if(victim == 0)
+    return 0;
+
+  int blkno = swap_alloc();
+  if(blkno < 0){
+    // swap space도 꽉 참 — 진짜 OOM
+    return 0;
+  }
+
+  uint64 pa = PAGE2PA(victim);
+  pte_t *pte = walk(victim->pagetable, (uint64)victim->vaddr, 0);
+  if(pte == 0){
+    swap_free(blkno);
+    return 0;
+  }
+
+  // 디스크에 쓰기
+  swapwrite(pa, blkno);
+
+  // PTE를 swap 형태로: blkno를 PPN 자리에, V/A 끄고 나머지 flags 유지
+  uint64 flags = PTE_FLAGS(*pte);
+  *pte = ((uint64)blkno << 10) | (flags & ~(PTE_V | PTE_A));
+
+  // TLB 무효화
+  sfence_vma();
+
+  return (char*)pa;
+}
