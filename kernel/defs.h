@@ -69,6 +69,9 @@ void            kinit(void);
 // pa4: LRU helpers (impl in later phase)
 void            lru_add(char *pa, pagetable_t pt, uint64 va);
 void            lru_remove(char *pa);
+// pa4: swap slot 관리
+int             swap_alloc(void);
+void            swap_free(int blkno);
 
 // log.c
 void            initlog(int, struct superblock*);
