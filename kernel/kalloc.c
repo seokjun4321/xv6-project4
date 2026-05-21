@@ -276,6 +276,14 @@ swap_out(void)
   pagetable_t saved = p->pagetable;
   p->pagetable = victim->pagetable;
 
+  // DEBUG
+  printf("swap_out: victim pa=%p va=%p pt=%p myproc_pt=%p\n",
+         (void*)pa, (void*)victim->vaddr,
+         (void*)victim->pagetable, (void*)saved);
+  pte_t *vpte = walk(victim->pagetable, (uint64)victim->vaddr, 0);
+  printf("swap_out: victim pte=%p valid=%d user=%d\n",
+         (void*)*vpte, (*vpte & PTE_V) ? 1 : 0, (*vpte & PTE_U) ? 1 : 0);
+
   swapwrite((uint64)victim->vaddr, blkno);
 
   p->pagetable = saved;
