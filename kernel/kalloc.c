@@ -28,11 +28,15 @@ struct page pages[PHYSTOP/PGSIZE];
 struct page *page_lru_head;
 int num_free_pages;
 int num_lru_pages;
+struct spinlock lru_lock;
+
+#define PA2PAGE(pa) (&pages[(uint64)(pa) / PGSIZE])
 
 void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
+  initlock(&lru_lock, "lru");
   freerange(end, (void*)PHYSTOP);
   page_lru_head = 0;
   num_lru_pages = 0;
@@ -67,6 +71,7 @@ kfree(void *pa)
   acquire(&kmem.lock);
   r->next = kmem.freelist;
   kmem.freelist = r;
+  num_free_pages++;
   release(&kmem.lock);
 }
 
@@ -81,8 +86,10 @@ kalloc(void)
 
   acquire(&kmem.lock);
   r = kmem.freelist;
-  if(r)
+  if(r){
     kmem.freelist = r->next;
+    num_free_pages--;
+  }
   release(&kmem.lock);
 
   if(r)
@@ -90,15 +97,50 @@ kalloc(void)
   return (void*)r;
 }
 
-// pa4: LRU 관리 함수 (phase 2에서 구현)
+// pa4: 원형 doubly linked list의 tail에 추가
 void
 lru_add(char *pa, pagetable_t pt, uint64 va)
 {
-  // TODO: phase 2
+  struct page *p = PA2PAGE(pa);
+
+  p->pagetable = pt;
+  p->vaddr = (char*)va;
+
+  acquire(&lru_lock);
+  if(page_lru_head == 0){
+    p->next = p;
+    p->prev = p;
+    page_lru_head = p;
+  } else {
+    struct page *tail = page_lru_head->prev;
+    p->next = page_lru_head;
+    p->prev = tail;
+    tail->next = p;
+    page_lru_head->prev = p;
+  }
+  num_lru_pages++;
+  release(&lru_lock);
 }
 
+// pa4: called only when page is in LRU
 void
 lru_remove(char *pa)
 {
-  // TODO: phase 2
+  struct page *p = PA2PAGE(pa);
+
+  acquire(&lru_lock);
+  if(p->next == p){
+    page_lru_head = 0;
+  } else {
+    p->prev->next = p->next;
+    p->next->prev = p->prev;
+    if(page_lru_head == p)
+      page_lru_head = p->next;
+  }
+  p->next = 0;
+  p->prev = 0;
+  p->pagetable = 0;
+  p->vaddr = 0;
+  num_lru_pages--;
+  release(&lru_lock);
 }
