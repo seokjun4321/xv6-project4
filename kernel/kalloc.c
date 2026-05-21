@@ -108,6 +108,7 @@ kalloc(void)
   }
 
   // pa4: freelist가 비었으면 swap-out 시도
+  printf("kalloc: freelist empty, calling swap_out\n");
   char *pa = swap_out();
   if(pa == 0){
     printf("kalloc: out of memory\n");
@@ -271,9 +272,13 @@ reclaim(void)
 char *
 swap_out(void)
 {
+  printf("swap_out called: lru_pages=%d free_pages=%d\n",
+         num_lru_pages, num_free_pages);
   struct page *victim = reclaim();
-  if(victim == 0)
+  if(victim == 0){
+    printf("swap_out: reclaim returned 0\n");
     return 0;
+  }
 
   int blkno = swap_alloc();
   if(blkno < 0)
