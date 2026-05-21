@@ -37,7 +37,8 @@
 // for use by the kernel and user pages
 // from physical address 0x80000000 to PHYSTOP.
 #define KERNBASE 0x80000000L
-#define PHYSTOP (KERNBASE + 128*1024*1024)
+// pa4: swap 동작 검증용 (원래 128MB)
+#define PHYSTOP (KERNBASE + 8*1024*1024)
 
 // map the trampoline page to the highest address,
 // in both user and kernel space.
