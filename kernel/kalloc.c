@@ -101,9 +101,19 @@ kalloc(void)
   }
   release(&kmem.lock);
 
-  if(r)
+  if(r){
     memset((char*)r, 5, PGSIZE); // fill with junk
-  return (void*)r;
+    return (void*)r;
+  }
+
+  // pa4: freelist가 비었으면 swap-out 시도
+  char *pa = swap_out();
+  if(pa == 0){
+    printf("kalloc: out of memory\n");
+    return 0;
+  }
+  memset(pa, 5, PGSIZE);
+  return (void*)pa;
 }
 
 // pa4: 원형 doubly linked list의 tail에 추가
