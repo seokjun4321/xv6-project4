@@ -369,6 +369,13 @@ uvmclear(pagetable_t pagetable, uint64 va)
   pte = walk(pagetable, va, 0);
   if(pte == 0)
     panic("uvmclear");
+  // pa4: PTE_U 빼기 전에 LRU에서 정리
+  if(*pte & PTE_V){
+    uint64 pa = PTE2PA(*pte);
+    struct page *lp = PA2PAGE(pa);
+    if(lp->next != 0)
+      lru_remove((char*)pa);
+  }
   *pte &= ~PTE_U;
 }
 

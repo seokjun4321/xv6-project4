@@ -227,6 +227,22 @@ reclaim(void)
       continue;
     }
 
+    if(!(*pte & PTE_U)){
+      // user 비트 없는 페이지는 swap 대상 아님 — 떼고 다음 후보로
+      if(victim->next == victim){
+        page_lru_head = 0;
+        release(&lru_lock);
+        return 0;
+      }
+      victim->prev->next = victim->next;
+      victim->next->prev = victim->prev;
+      page_lru_head = victim->next;
+      victim->next = 0;
+      victim->prev = 0;
+      num_lru_pages--;
+      continue;
+    }
+
     if(*pte & PTE_A){
       // 최근에 접근됨 → 한 번 봐주고 head를 다음으로
       *pte &= ~PTE_A;
@@ -275,14 +291,6 @@ swap_out(void)
   struct proc *p = myproc();
   pagetable_t saved = p->pagetable;
   p->pagetable = victim->pagetable;
-
-  // DEBUG
-  printf("swap_out: victim pa=%p va=%p pt=%p myproc_pt=%p\n",
-         (void*)pa, (void*)victim->vaddr,
-         (void*)victim->pagetable, (void*)saved);
-  pte_t *vpte = walk(victim->pagetable, (uint64)victim->vaddr, 0);
-  printf("swap_out: victim pte=%p valid=%d user=%d\n",
-         (void*)*vpte, (*vpte & PTE_V) ? 1 : 0, (*vpte & PTE_U) ? 1 : 0);
 
   swapwrite((uint64)victim->vaddr, blkno);
 
