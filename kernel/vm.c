@@ -192,8 +192,16 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
   for(a = va; a < va + npages*PGSIZE; a += PGSIZE){
     if((pte = walk(pagetable, a, 0)) == 0)
       panic("uvmunmap: walk");
-    if((*pte & PTE_V) == 0)
+    if((*pte & PTE_V) == 0){
+      // pa4: swapped-out 페이지면 swap slot만 해제
+      if(*pte != 0){
+        int blkno = (*pte) >> 10;
+        swap_free(blkno);
+        *pte = 0;
+        continue;
+      }
       panic("uvmunmap: not mapped");
+    }
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
     if(do_free){

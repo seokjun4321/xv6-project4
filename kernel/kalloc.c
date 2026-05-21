@@ -283,3 +283,35 @@ swap_out(void)
 
   return (char*)pa;
 }
+
+// pa4: swapped-out 페이지를 디스크에서 읽어 새 물리 페이지에 매핑.
+// 성공 0, 실패 -1.
+int
+swap_in(pagetable_t pagetable, uint64 va)
+{
+  va = PGROUNDDOWN(va);
+  pte_t *pte = walk(pagetable, va, 0);
+  if(pte == 0 || *pte == 0)
+    return -1;             // 진짜 unmapped
+  if(*pte & PTE_V)
+    return -1;             // 이미 valid한데 fault? 이상함
+
+  int blkno = (*pte) >> 10;
+
+  char *new_pa = kalloc();
+  if(new_pa == 0)
+    return -1;             // OOM
+
+  swapread((uint64)new_pa, blkno);
+  swap_free(blkno);
+
+  uint64 flags = PTE_FLAGS(*pte);
+  *pte = PA2PTE(new_pa) | flags | PTE_V;
+  sfence_vma();
+
+  // 다시 user 페이지로 LRU에 등록
+  if(flags & PTE_U)
+    lru_add(new_pa, pagetable, va);
+
+  return 0;
+}

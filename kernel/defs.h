@@ -74,6 +74,7 @@ int             swap_alloc(void);
 void            swap_free(int blkno);
 // pa4: page reclamation
 char *          swap_out(void);
+int             swap_in(pagetable_t pagetable, uint64 va);
 
 // log.c
 void            initlog(int, struct superblock*);
