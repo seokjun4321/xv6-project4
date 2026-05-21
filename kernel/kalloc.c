@@ -34,6 +34,8 @@ kinit()
 {
   initlock(&kmem.lock, "kmem");
   freerange(end, (void*)PHYSTOP);
+  page_lru_head = 0;
+  num_lru_pages = 0;
 }
 
 void
@@ -86,4 +88,17 @@ kalloc(void)
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
+}
+
+// pa4: LRU 관리 함수 (phase 2에서 구현)
+void
+lru_add(char *pa, pagetable_t pt, uint64 va)
+{
+  // TODO: phase 2
+}
+
+void
+lru_remove(char *pa)
+{
+  // TODO: phase 2
 }

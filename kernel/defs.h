@@ -66,6 +66,9 @@ void            ramdiskrw(struct buf*);
 void*           kalloc(void);
 void            kfree(void *);
 void            kinit(void);
+// pa4: LRU helpers (impl in later phase)
+void            lru_add(char *pa, pagetable_t pt, uint64 va);
+void            lru_remove(char *pa);
 
 // log.c
 void            initlog(int, struct superblock*);
