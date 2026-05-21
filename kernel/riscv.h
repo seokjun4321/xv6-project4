@@ -357,6 +357,9 @@ struct page{
 	char *vaddr;
 };
 
+extern struct page pages[];
+#define PA2PAGE(pa) (&pages[(uint64)(pa) / PGSIZE])
+
 
 
 #endif // __ASSEMBLER__

@@ -163,6 +163,12 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
     if(*pte & PTE_V)
       panic("mappages: remap");
     *pte = PA2PTE(pa) | perm | PTE_V;
+    // pa4: user 페이지는 LRU에 등록
+    if(perm & PTE_U){
+      struct page *lp = PA2PAGE(pa);
+      if(lp->next == 0)
+        lru_add((char*)pa, pagetable, a);
+    }
     if(a == last)
       break;
     a += PGSIZE;
@@ -192,6 +198,12 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       panic("uvmunmap: not a leaf");
     if(do_free){
       uint64 pa = PTE2PA(*pte);
+      // pa4: LRU에 있으면 먼저 정리 (kfree가 페이지 내용을 덮어쓰기 전)
+      if(*pte & PTE_U){
+        struct page *lp = PA2PAGE(pa);
+        if(lp->next != 0)
+          lru_remove((char*)pa);
+      }
       kfree((void*)pa);
     }
     *pte = 0;

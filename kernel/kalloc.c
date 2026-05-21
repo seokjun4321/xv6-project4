@@ -30,8 +30,6 @@ int num_free_pages;
 int num_lru_pages;
 struct spinlock lru_lock;
 
-#define PA2PAGE(pa) (&pages[(uint64)(pa) / PGSIZE])
-
 void
 kinit()
 {
