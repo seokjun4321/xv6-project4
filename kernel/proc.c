@@ -125,8 +125,12 @@ found:
   p->pid = allocpid();
   p->state = USED;
 
+  // pa4: kalloc/proc_pagetable이 swap 슬립 가능하므로 락 일시 해제
+  release(&p->lock);
+
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
+    acquire(&p->lock);
     freeproc(p);
     release(&p->lock);
     return 0;
@@ -135,10 +139,14 @@ found:
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){
+    acquire(&p->lock);
     freeproc(p);
     release(&p->lock);
     return 0;
   }
+
+  // 호출자가 락 잡힌 채 반환받기 기대하므로 재획득
+  acquire(&p->lock);
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
@@ -288,12 +296,18 @@ fork(void)
     return -1;
   }
 
+  // pa4: uvmcopy 내부 kalloc이 swap 슬립 가능. 자식 락 일시 해제.
+  release(&np->lock);
+
   // Copy user memory from parent to child.
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
+    acquire(&np->lock);
     freeproc(np);
     release(&np->lock);
     return -1;
   }
+
+  acquire(&np->lock);
   np->sz = p->sz;
 
   // copy saved user registers.
