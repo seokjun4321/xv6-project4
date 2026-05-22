@@ -706,6 +706,10 @@ swapread(uint64 ptr, int blkno)
   int i;
   const int BLKS_PER_PG = PGSIZE/BSIZE;
 
+  static int sr_count = 0;
+  if(++sr_count == 1 || sr_count % 1000 == 0)
+    printf("[sr:%d nrr=%d]", sr_count, nr_sectors_read);
+
   if (blkno < 0 || blkno >= SWAPMAX / BLKS_PER_PG)
     panic("swapread: blkno exceeded range");
 
@@ -725,6 +729,10 @@ swapwrite(uint64 ptr, int blkno)
   struct buf *bp;
   int i;
   const int BLKS_PER_PG = PGSIZE / BSIZE;
+
+  static int sw_count = 0;
+  if(++sw_count == 1 || sw_count % 1000 == 0)
+    printf("[sw:%d nrw=%d]", sw_count, nr_sectors_write);
 
   if (blkno < 0 || blkno >= SWAPMAX / BLKS_PER_PG)
     panic("swapwrite: blkno exceeded range");
