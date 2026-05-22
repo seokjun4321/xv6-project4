@@ -5,8 +5,14 @@
 int
 main(int argc, char *argv[])
 {
+  int r1, w1, r2, w2;
   int npages = 200;
-  if(argc > 1) npages = atoi(argv[1]);
+
+  if(argc > 1)
+    npages = atoi(argv[1]);
+
+  swapstat(&r1, &w1);
+  printf("start: reads=%d writes=%d\n", r1, w1);
 
   char *base = sbrk(npages * 4096);
   if(base == (char*)-1){
@@ -14,27 +20,24 @@ main(int argc, char *argv[])
     exit(1);
   }
 
-  // 1단계: write
   for(int i = 0; i < npages; i++){
     base[i * 4096] = (char)(i & 0xff);
   }
-  printf("write done\n");
 
-  // 2단계: read + verify
+  swapstat(&r2, &w2);
+  printf("after write: reads=%d writes=%d\n", r2, w2);
+
   int errors = 0;
   for(int i = 0; i < npages; i++){
     char expected = (char)(i & 0xff);
     if(base[i * 4096] != expected) errors++;
   }
-  printf("read done, errors=%d\n", errors);
 
-  if(errors == 0) printf("PASS\n");
-  else printf("FAIL\n");
+  swapstat(&r2, &w2);
+  printf("after read: reads=%d writes=%d errors=%d\n", r2, w2, errors);
 
-  // 끝에 swapstat 한 번 시도 (curiosity)
-  int r, w;
-  swapstat(&r, &w);
-  printf("after swapstat: reads=%d writes=%d\n", r, w);
+  if(errors == 0) printf("PASS: data preserved across swap\n");
+  else printf("FAIL: %d pages corrupted\n", errors);
 
   exit(0);
 }

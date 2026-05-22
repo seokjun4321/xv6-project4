@@ -110,8 +110,7 @@ kalloc(void)
   // pa4: freelist가 비었으면 swap-out 시도
   char *pa = swap_out();
   if(pa == 0){
-    extern int nr_sectors_read, nr_sectors_write;
-    printf("kalloc: OOM (sw=%d sr=%d)\n", nr_sectors_write, nr_sectors_read);
+    printf("kalloc: out of memory\n");
     return 0;
   }
   memset(pa, 5, PGSIZE);
@@ -272,9 +271,6 @@ reclaim(void)
 char *
 swap_out(void)
 {
-  static int so_count = 0;
-  if(++so_count == 1 || so_count % 100 == 0)
-    printf("[so:%d]", so_count);
   struct page *victim = reclaim();
   if(victim == 0)
     return 0;
