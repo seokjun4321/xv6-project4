@@ -272,6 +272,9 @@ reclaim(void)
 char *
 swap_out(void)
 {
+  static int so_count = 0;
+  if(++so_count == 1 || so_count % 100 == 0)
+    printf("[so:%d]", so_count);
   struct page *victim = reclaim();
   if(victim == 0)
     return 0;

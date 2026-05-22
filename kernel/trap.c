@@ -69,6 +69,9 @@ usertrap(void)
     // ok
   } else if(r_scause() == 12 || r_scause() == 13 || r_scause() == 15){
     // pa4: swap-in 시도
+    static int si_count = 0;
+    if(++si_count == 1 || si_count % 100 == 0)
+      printf("[si:%d]", si_count);
     uint64 fault_va = r_stval();
     if(swap_in(p->pagetable, fault_va) < 0){
       printf("usertrap(): swap-in failed, scause 0x%lx pid=%d\n", r_scause(), p->pid);
