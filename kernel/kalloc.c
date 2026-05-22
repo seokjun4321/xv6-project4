@@ -108,7 +108,6 @@ kalloc(void)
   }
 
   // pa4: freelist가 비었으면 swap-out 시도
-  printf("kalloc: freelist empty, calling swap_out\n");
   char *pa = swap_out();
   if(pa == 0){
     printf("kalloc: out of memory\n");
@@ -208,15 +207,9 @@ reclaim(void)
     return 0;
   }
 
-  static int reclaim_iter = 0;
   for(;;){
     struct page *victim = page_lru_head;
     pte_t *pte = walk(victim->pagetable, (uint64)victim->vaddr, 0);
-
-    if(++reclaim_iter <= 30){
-      printf("reclaim[%d]: victim=%p pte=%lx\n",
-             reclaim_iter, victim, pte ? *pte : 0);
-    }
 
     if(pte == 0){
       // 비정상 — 그냥 리스트에서 떼고 다음 후보로 (방어용)
@@ -235,7 +228,6 @@ reclaim(void)
     }
 
     if(!(*pte & PTE_U)){
-      if(reclaim_iter <= 30) printf("  -> no PTE_U, removing\n");
       // user 비트 없는 페이지는 swap 대상 아님 — 떼고 다음 후보로
       if(victim->next == victim){
         page_lru_head = 0;
@@ -252,14 +244,12 @@ reclaim(void)
     }
 
     if(*pte & PTE_A){
-      if(reclaim_iter <= 30) printf("  -> PTE_A set, clearing\n");
       // 최근에 접근됨 → 한 번 봐주고 head를 다음으로
       *pte &= ~PTE_A;
       page_lru_head = page_lru_head->next;
       continue;
     }
 
-    if(reclaim_iter <= 30) printf("  -> evicting\n");
     // PTE_A == 0 → victim 확정. LRU에서 제거.
     if(victim->next == victim){
       page_lru_head = 0;
@@ -281,13 +271,9 @@ reclaim(void)
 char *
 swap_out(void)
 {
-  printf("swap_out called: lru_pages=%d free_pages=%d\n",
-         num_lru_pages, num_free_pages);
   struct page *victim = reclaim();
-  if(victim == 0){
-    printf("swap_out: reclaim returned 0\n");
+  if(victim == 0)
     return 0;
-  }
 
   int blkno = swap_alloc();
   if(blkno < 0)
