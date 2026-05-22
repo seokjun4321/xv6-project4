@@ -340,8 +340,16 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
-    if((*pte & PTE_V) == 0)
-      panic("uvmcopy: page not present");
+    if((*pte & PTE_V) == 0){
+      // pa4: swap된 페이지면 swap-in 후 복사
+      if(*pte != 0){
+        if(swap_in(old, i) < 0)
+          goto err;
+        // swap_in이 *pte를 valid PTE로 갱신했으므로 그대로 진행
+      } else {
+        panic("uvmcopy: page not present");
+      }
+    }
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
     if((mem = kalloc()) == 0)
