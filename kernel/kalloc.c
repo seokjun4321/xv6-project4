@@ -110,7 +110,8 @@ kalloc(void)
   // pa4: freelist가 비었으면 swap-out 시도
   char *pa = swap_out();
   if(pa == 0){
-    printf("kalloc: out of memory\n");
+    extern int nr_sectors_read, nr_sectors_write;
+    printf("kalloc: OOM (sw=%d sr=%d)\n", nr_sectors_write, nr_sectors_read);
     return 0;
   }
   memset(pa, 5, PGSIZE);
