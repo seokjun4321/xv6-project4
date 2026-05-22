@@ -322,15 +322,20 @@ swap_in(pagetable_t pagetable, uint64 va)
     return -1;
 
   // PTE를 먼저 새 물리 페이지로 매핑 (swapread가 va 통해 쓰기 위함)
-  uint64 flags = PTE_FLAGS(*pte);
-  *pte = PA2PTE(new_pa) | flags | PTE_V;
+  // copyout이 PTE_W를 요구하므로 임시로 writable 설정
+  uint64 saved_flags = PTE_FLAGS(*pte);
+  *pte = PA2PTE(new_pa) | saved_flags | PTE_V | PTE_W;
   sfence_vma();
 
-  // 이제 va가 새 페이지에 매핑됐으니 swapread가 동작 가능
   swapread(va, blkno);
+
+  // 원래 권한으로 복원
+  *pte = PA2PTE(new_pa) | saved_flags | PTE_V;
+  sfence_vma();
+
   swap_free(blkno);
 
-  if(flags & PTE_U)
+  if(saved_flags & PTE_U)
     lru_add(new_pa, pagetable, va);
 
   return 0;
