@@ -141,6 +141,12 @@ UPROGS=\
 	$U/_zombie\
 	$U/_swaptest\
 	$U/_memtest\
+	$U/_input1\
+	$U/_input2\
+	$U/_input3\
+	$U/_input4\
+	$U/_input5\
+	$U/_input6\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
