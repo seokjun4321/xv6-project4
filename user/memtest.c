@@ -33,8 +33,8 @@ main(int argc, char *argv[])
 
   // 끝에 swapstat 한 번 시도 (curiosity)
   int r, w;
-  int ret = swapstat(&r, &w);
-  printf("swapstat returned %d, reads=%d writes=%d\n", ret, r, w);
+  swapstat(&r, &w);
+  printf("after swapstat: reads=%d writes=%d\n", r, w);
 
   exit(0);
 }
