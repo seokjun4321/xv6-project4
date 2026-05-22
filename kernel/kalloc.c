@@ -35,9 +35,6 @@ struct spinlock lru_lock;
 static char *swap_bitmap;
 static struct spinlock swap_bitmap_lock;
 
-static int swap_in_count = 0;
-static int swap_out_count = 0;
-
 void
 kinit()
 {
@@ -274,9 +271,6 @@ reclaim(void)
 char *
 swap_out(void)
 {
-  if(++swap_out_count <= 30)
-    printf("swap_out[%d]: lru=%d free=%d\n",
-           swap_out_count, num_lru_pages, num_free_pages);
   struct page *victim = reclaim();
   if(victim == 0)
     return 0;
@@ -315,9 +309,6 @@ int
 swap_in(pagetable_t pagetable, uint64 va)
 {
   va = PGROUNDDOWN(va);
-  if(++swap_in_count <= 30)
-    printf("swap_in[%d]: va=%lx pte=%lx\n",
-           swap_in_count, va, *walk(pagetable, va, 0));
   pte_t *pte = walk(pagetable, va, 0);
   if(pte == 0 || *pte == 0)
     return -1;
@@ -338,9 +329,6 @@ swap_in(pagetable_t pagetable, uint64 va)
 
   swapread(va, blkno);
 
-  if(swap_in_count <= 30)
-    printf("  swap_in[%d]: swapread done\n", swap_in_count);
-
   // 원래 권한으로 복원
   *pte = PA2PTE(new_pa) | saved_flags | PTE_V;
   sfence_vma();
@@ -350,7 +338,5 @@ swap_in(pagetable_t pagetable, uint64 va)
   if(saved_flags & PTE_U)
     lru_add(new_pa, pagetable, va);
 
-  if(swap_in_count <= 30)
-    printf("  swap_in[%d]: returning ok\n", swap_in_count);
   return 0;
 }
