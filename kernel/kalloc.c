@@ -33,7 +33,7 @@ int num_lru_pages;
 struct spinlock lru_lock;
 
 // pa4: swap space slot 관리용 비트맵
-static char swap_bitmap[PGSIZE];
+static char *swap_bitmap;
 static struct spinlock swap_bitmap_lock;
 
 void
@@ -45,6 +45,8 @@ kinit()
   freerange(end, (void*)PHYSTOP);
   page_lru_head = 0;
   num_lru_pages = 0;
+  // pages[]의 KERNBASE 미만 데드존을 swap_bitmap으로 재활용 (BSS 0)
+  swap_bitmap = (char *)pages;
 }
 
 void
