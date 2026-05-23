@@ -9,6 +9,7 @@
 #include "riscv.h"
 #include "defs.h"
 #include "proc.h"
+#include "fs.h"
 
 void freerange(void *pa_start, void *pa_end);
 
@@ -32,7 +33,7 @@ int num_lru_pages;
 struct spinlock lru_lock;
 
 // pa4: swap space slot 관리용 비트맵
-static char *swap_bitmap;
+static char swap_bitmap[PGSIZE];
 static struct spinlock swap_bitmap_lock;
 
 void
@@ -44,12 +45,6 @@ kinit()
   freerange(end, (void*)PHYSTOP);
   page_lru_head = 0;
   num_lru_pages = 0;
-
-  // swap 비트맵을 위한 한 페이지 확보
-  swap_bitmap = (char*)kalloc();
-  if(swap_bitmap == 0)
-    panic("kinit: swap_bitmap alloc");
-  memset(swap_bitmap, 0, PGSIZE);
 }
 
 void
@@ -169,8 +164,9 @@ lru_remove(char *pa)
 int
 swap_alloc(void)
 {
+  const int max_slots = SWAPMAX / (PGSIZE / BSIZE);
   acquire(&swap_bitmap_lock);
-  for(int i = 0; i < SWAPMAX; i++){
+  for(int i = 0; i < max_slots; i++){
     int byte = i / 8;
     int bit = i % 8;
     if((swap_bitmap[byte] & (1 << bit)) == 0){
@@ -187,7 +183,7 @@ swap_alloc(void)
 void
 swap_free(int blkno)
 {
-  if(blkno < 0 || blkno >= SWAPMAX)
+  if(blkno < 0 || blkno >= SWAPMAX / (PGSIZE / BSIZE))
     panic("swap_free: bad blkno");
   acquire(&swap_bitmap_lock);
   int byte = blkno / 8;
